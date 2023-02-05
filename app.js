@@ -1,14 +1,16 @@
 var express = require('express');
 var app = express();
-var serv = require('http').Server(app);
+const port = process.env.PORT || 3000;
+const http = require('http');
+var serv = http.Server(app);
 
 app.get('/',function(req, res) {
 	res.sendFile(__dirname + '/client/index.html');
 });
 app.use('/client',express.static(__dirname + '/client'));
 
-serv.listen(2000);
-console.log("Server started.");
+serv.listen(port);
+console.log("Server started. on port: "+port);
 
 var SOCKET_LIST = {};
 var PLAYER_LIST = {};
