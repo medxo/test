@@ -1,0 +1,190 @@
+<html>
+	<head>
+		<style>
+			.box{
+				border-width: 3px 3px 5px 5px;
+				border-radius:4% 95% 6% 95%/95% 4% 92% 5%;
+				margin:25px;
+				width:150px;
+				height:150px;
+				border: solid black;
+				border-color: black;
+				text-align: center;
+				align-content: center;
+			}
+			.inputs{
+				width: 125;
+				border: solid black;
+			}
+			.title-label {
+				position: absolute;
+				z-index: 9;
+				color: blue;
+				margin-top: 5px;
+				margin-left: 5px;
+			}
+		</style>
+	</head>
+	<body>
+		
+		<table width="100%">
+			<tr>
+				<td align="center">
+					<table class='box' id="table1">
+						<thead><tr><th>Team 1</th></tr></thead>
+						<tbody id="team1"></tbody>
+					</table>
+				</td>
+				<td align="center" width="100%">
+					<table id="loginDiv" class='box' style="width:300;">
+						<tr>
+							<td><input type="text" id="name" class="inputs" required value="medxo@live.fr"></td>
+							<td>
+								<select id="teams" class="inputs" required>
+									<option value="team1">Team 1</option>
+									<option value="team2">Team 2</option>
+							  	</select></td>
+						</tr>
+						<tr>
+							<td><input type="text" id="password" class="inputs" required value="123456789"></td>
+							<td><input type="button" id="loginButton" value="Login" class="inputs"></td>
+						</tr>
+					</table>
+				</td>
+				<td align="center">
+					<table class='box' id="table2">
+						<thead><tr><th>Team 2</th></tr></thead>
+						<tbody id="team2"></tbody>
+					</table>
+				</td>
+			</tr>
+		</table>
+
+	</body>
+</html>
+
+<script src="https://cdn.socket.io/4.5.4/socket.io.js"></script>
+
+<script type="module">
+
+	// Import the functions you need from the SDKs you need
+	import { initializeApp } from "https://www.gstatic.com/firebasejs/9.16.0/firebase-app.js";
+	import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword  } from 'https://www.gstatic.com/firebasejs/9.16.0/firebase-auth.js';
+	import { getDatabase, ref, set, child, get, update, remove } from 'https://www.gstatic.com/firebasejs/9.16.0/firebase-database.js';
+
+	const firebaseConfig = {
+		apiKey: "AIzaSyAJWt-gTtP5XyNIie892_OSHPha5VluDzA",
+		authDomain: "test-8d0b9.firebaseapp.com",
+		projectId: "test-8d0b9",
+		storageBucket: "test-8d0b9.appspot.com",
+		messagingSenderId: "501236248313",
+		appId: "1:501236248313:web:e1c477dcec8bfce8febc28",
+		databaseURL: "https://test-8d0b9-default-rtdb.europe-west1.firebasedatabase.app",
+		};
+
+	
+	var socket = io();
+		
+	socket.on('myloop',function(data){
+		var tdPlayers = document.querySelectorAll('[id^="videoElement"]');
+		var tdPlayers1 = [];
+		for (var i in tdPlayers) {
+			tdPlayers1.push(tdPlayers[i].id);	
+		}
+		
+		for(var i in data){
+			if (document.getElementById("videoElement" + data[i].uid)) {
+				var indexTable = tdPlayers1.indexOf("videoElement" + data[i].uid);
+				if(indexTable >= 0){
+					delete tdPlayers1[indexTable];
+				}
+			}else{
+				var container = "";
+				container += "<tr id='videoElement" + data[i].uid + "'>";
+				container += "<td>";
+				container += "<div class='box' style='position: relative;'>";
+				container += "<label class='title-label'>" + data[i].email + "</label>";
+				container += "<video autoplay='true' style='object-fit:cover;width:100%;height:100%;' id='vidElement"+ data[i].uid +"'></video><br>";
+				container += "</div>";
+				container += "</td>";
+				container += "</tr>";
+
+				document.getElementById(data[i].team).innerHTML += container;
+											
+				var video = document.getElementById("vidElement" + data[i].uid);
+
+				if (navigator.mediaDevices.getUserMedia) {
+					navigator.mediaDevices.getUserMedia({ video: true })
+					.then(function (stream) {
+						video.srcObject = stream;
+					})
+					.catch(function (err0r) {
+						console.log("Something went wrong!");
+					});
+				}	
+			}
+
+		}
+
+		for(var i in tdPlayers1){
+			if (document.getElementById(tdPlayers1[i])) {
+				document.getElementById(tdPlayers1[i]).remove();
+			}
+		}
+			
+	});
+
+	socket.on('connect', function() {
+        document.getElementById("loginButton").addEventListener("click", function () {
+			var email = document.getElementById("name").value;
+			var password = document.getElementById("password").value;
+			var teams = document.getElementById("teams").value;
+        	socket.emit("loginButton",{'email':email,'team':teams});
+		});
+    });
+
+	socket.on('loginButton', function(data) {
+		// Initialize Firebase
+		const app = initializeApp(firebaseConfig);
+
+		var email = document.getElementById("name").value;
+		var password = document.getElementById("password").value;
+
+		const auth = getAuth();
+		signInWithEmailAndPassword(auth, email, password)
+		.then((userCredential) => {
+			
+			const user = userCredential.user;
+			const dbRef = ref(getDatabase(app));
+			get(child(dbRef, `players/${data.uid}`)).then((snapshot) => {
+			if (snapshot.exists()) {
+				remove(dbRef, `players/${data.uid}`);
+			} else {
+				console.log("No data available");
+				set(child(dbRef, `players/${data.uid}`),data);
+			}
+			}).catch((error) => {
+				console.log(error.code);
+			});
+
+			document.getElementById("loginDiv").remove();
+		})
+		.catch((error) => {
+			if(error.code == "auth/user-not-found"){
+				createUserWithEmailAndPassword(auth, email, password)
+					.then((userCredential) => {
+						const user = userCredential.user;
+						document.getElementById("loginDiv").remove();
+					})
+					.catch((error) => {
+						const errorCode = error.code;
+						const errorMessage = error.message;
+						console.log(errorMessage);
+				});
+			}
+		});
+
+	});
+
+</script>
+
