@@ -99,29 +99,38 @@
 					delete tdPlayers1[indexTable];
 				}
 			}else{
-				var container = "";
-				container += "<tr id='videoElement" + data[i].uid + "'>";
-				container += "<td>";
-				container += "<div class='box' style='position: relative;'>";
-				container += "<label class='title-label'>" + data[i].email + "</label>";
-				container += "<video autoplay='true' style='object-fit:cover;width:100%;height:100%;' id='vidElement"+ data[i].uid +"'></video><br>";
-				container += "</div>";
-				container += "</td>";
-				container += "</tr>";
+				var email = document.getElementById("name").value;
+				var password = document.getElementById("password").value;
+				var teams = document.getElementById("teams").value;
+				var uid = btoa(email);
 
-				document.getElementById(data[i].team).innerHTML += container;
-											
-				var video = document.getElementById("vidElement" + data[i].uid);
+				var tr = document.createElement('tr');
+				tr.id = 'videoElement' + uid;
 
-				if (navigator.mediaDevices.getUserMedia) {
-					navigator.mediaDevices.getUserMedia({ video: true })
-					.then(function (stream) {
-						video.srcObject = stream;
-					})
-					.catch(function (err0r) {
-						console.log("Something went wrong!");
-					});
-				}	
+				var td = document.createElement('td');
+				var div = document.createElement('div');
+				div.classList.add('box');
+				div.style = 'position:relative;';
+
+				var label = document.createElement('label');
+				label.classList.add('title-label');
+				var emailElem = document.createTextNode(email);
+
+				var video = document.createElement('video');
+				video.id = 'vidElement' + uid;
+				video.muted = true;
+				video.autoplay = true;
+				video.style = 'object-fit:cover;width:100%;height:100%;';
+				video.srcObject = data[i].streamPlayer;
+
+				label.appendChild(emailElem);
+				div.appendChild(label);
+				div.appendChild(video);
+				td.appendChild(div);
+				tr.appendChild(td);
+				
+				document.getElementById(data[i].team).appendChild(tr);
+				
 			}
 
 		}
@@ -136,10 +145,19 @@
 
 	socket.on('connect', function() {
         document.getElementById("loginButton").addEventListener("click", function () {
-			var email = document.getElementById("name").value;
-			var password = document.getElementById("password").value;
-			var teams = document.getElementById("teams").value;
-        	socket.emit("loginButton",{'email':email,'team':teams});
+
+			var mediaStream;
+			navigator.mediaDevices.getUserMedia({video: true})
+			.then(stream => {
+				mediaStream = stream;
+			})
+			.catch(error => {
+				console.error('Error accessing media devices.', error);
+			});
+			
+
+
+        	socket.emit("loginButton",{'email':email,'team':teams,'streamPlayer':mediaStream});
 		});
     });
 
